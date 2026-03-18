@@ -1,11 +1,13 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { map, Observable } from 'rxjs';
 import { Product } from '../../models/producto/producto';
+import { isPlatformBrowser } from '@angular/common';
 
 @Injectable({ providedIn: 'root' })
 export class ProductsService {
-  constructor(private http: HttpClient) {}
+  private http = inject(HttpClient);
+  private platformId = inject(PLATFORM_ID);
 
   getAll(): Observable<Product[]> {
   return this.http.get('/productos.xml', { responseType: 'text' }).pipe(
@@ -15,6 +17,12 @@ export class ProductsService {
 
 
   private parseProductsXml(xmlText: string): Product[] {
+    // Verificar si DOMParser está disponible (solo en navegador)
+    if (typeof DOMParser === 'undefined') {
+      console.warn('DOMParser no disponible en este entorno (SSR)');
+      return [];
+    }
+
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlText, 'application/xml');
 
@@ -38,7 +46,7 @@ export class ProductsService {
 
   private getText(parent: Element, tag: string): string {
    return parent.getElementsByTagName(tag)[0]?.textContent?.trim() ?? '';
-  }
+ }
 
   private getNumber(parent: Element, tag: string): number {
     const value = this.getText(parent, tag);
