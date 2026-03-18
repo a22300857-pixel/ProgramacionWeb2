@@ -1,6 +1,6 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { map, Observable } from 'rxjs';
+import { map, Observable, of } from 'rxjs';
 import { Product } from '../../models/producto/producto';
 import { isPlatformBrowser } from '@angular/common';
 
@@ -8,12 +8,27 @@ import { isPlatformBrowser } from '@angular/common';
 export class ProductsService {
   private http = inject(HttpClient);
   private platformId = inject(PLATFORM_ID);
+  private cachedProducts: Product[] | null = null;
 
   getAll(): Observable<Product[]> {
-  return this.http.get('/productos.xml', { responseType: 'text' }).pipe(
-    map((xmlText) => this.parseProductsXml(xmlText))
-  );
-}
+    // Si ya tenemos productos en caché, retornarlos
+    if (this.cachedProducts) {
+      return of(this.cachedProducts);
+    }
+
+    // En SSR, retornar array vacío inmediatamente
+    if (!isPlatformBrowser(this.platformId)) {
+      return of([]);
+    }
+
+    return this.http.get('/productos.xml', { responseType: 'text' }).pipe(
+      map((xmlText) => {
+        const products = this.parseProductsXml(xmlText);
+        this.cachedProducts = products;
+        return products;
+      })
+    );
+  }
 
 
   private parseProductsXml(xmlText: string): Product[] {
@@ -24,6 +39,12 @@ export class ProductsService {
     }
 
     try {
+      // Verificar si DOMParser existe
+      if (typeof DOMParser === 'undefined') {
+        console.warn('DOMParser no definido');
+        return [];
+      }
+
       const parser = new DOMParser();
       const doc = parser.parseFromString(xmlText, 'application/xml');
 
