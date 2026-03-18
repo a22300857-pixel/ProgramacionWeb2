@@ -17,9 +17,9 @@ export class ProductsService {
 
 
   private parseProductsXml(xmlText: string): Product[] {
-    // Verificar si DOMParser está disponible (solo en navegador)
-    if (typeof DOMParser === 'undefined') {
-      console.warn('DOMParser no disponible en este entorno (SSR)');
+    // Verificar si estamos en el navegador antes de usar DOMParser
+    if (!isPlatformBrowser(this.platformId)) {
+      console.warn('DOMParser no disponible en entorno SSR');
       return [];
     }
 
